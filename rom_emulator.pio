@@ -1,0 +1,56 @@
+/* ====================================================================
+ * Projekt: true-ROM-RTDS (Real-Time ROM Emulator)
+ * Platforma docelowa: Raspberry Pi Pico 2 (RP2350)
+ * 
+ * "Stworzono z pomocą modelu AI Gemini (wersja Experimental 2026) 
+ *  – synergia pomysłu z potęgą maszyny."
+ * ==================================================================== */
+
+
+.program rom_emulator
+
+; IN pins: GPIO 0..15 (Szyna adresowa)
+; OUT pins: GPIO 16..23 (Szyna danych do bufora HCT)
+
+.wrap_target
+stary_adres:
+    mov x, pins             ; 1. Pobierz aktualny stan szyny adresowej do X
+    jmp x!=y, nowy_adres    ; 2. Porównaj X z Y. Jeśli są RÓŻNE -> skocz do obsługi nowego adresu
+    jmp stary_adres         ; 3. Jeśli są TAKIE SAME -> zapętl i czekaj dalej
+
+nowy_adres:
+    nop [3]                 ; Odczekaj 4 cykle zegara (ok. 26 ns przy 150 MHz) na stabilizację szyny
+    mov x, pins             ; Przeczytaj piny ponownie, aby upewnić się, że adres się ustabilizował
+
+    mov y, x                ; 4. Uaktualnij rejestr Y nowym adresem
+    in y, 16                ; 5. Pchnij ten adres do FIFO (Autopush wyzwoli natychmiast DMA)
+    out pins, 8             ; 6. Pobierz przygotowany bajt z DMA i wystaw na piny danych
+.wrap
+
+% c-sdk {
+#include "hardware/pio.h"
+
+void rom_emulator_program_init(PIO pio, uint sm, uint offset, uint addr_base, uint data_base) {
+    pio_sm_config c = rom_emulator_program_get_default_config(offset);
+
+    // 1. Konfiguracja mapowania pinów wejściowych (Adresy: 16 pinów od adresu bazowego)
+    sm_config_set_in_pins(&c, addr_base);
+    
+    // 2. Konfiguracja mapowania pinów wyjściowych (Dane: 8 pinów od danych bazowych)
+    sm_config_set_out_pins(&c, data_base, 8);
+
+    // 3. Włączenie Autoshift (Autopush przy 16 bitach, Autofull przy 8 bitach)
+    sm_config_set_in_shift(&c, false, true, 16);
+    sm_config_set_out_shift(&c, true, true, 8);
+
+    // Inicjalizacja kierunków GPIO
+    for (int i = 0; i < 16; i++) pio_gpio_init(pio, addr_base + i);
+    for (int i = 0; i < 8; i++)  pio_gpio_init(pio, data_base + i);
+
+    pio_sm_set_consecutive_pindirs(pio, sm, addr_base, 16, false); // Adresy jako wejścia
+    pio_sm_set_consecutive_pindirs(pio, sm, data_base, 8, true);   // Dane jako stałe wyjścia do bufora
+
+    // Ładowanie konfiguracji do maszyny stanowej
+    pio_sm_init(pio, sm, offset, &c);
+}
+%}
