@@ -1,4 +1,5 @@
 # tr-rtds
-Contemporary True Rom emulator-Real Time Development System. Ingeneered with great AI Gemini support.
 
-Preliminary project - under development
+Contemporary **T**rue **R**om emulator-**R**eal **T**ime **D**evelopment **S**ystem. Engineered with great AI Gemini support.
+
+Preliminary project - under development.
