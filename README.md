@@ -1,5 +1,5 @@
 # tr-rtds
 
-Contemporary **T**rue **R**om emulator-**R**eal **T**ime **D**evelopment **S**ystem. Engineered with great AI Gemini support.
+Contemporary **T**rue **R**om emulator-**R**eal **T**ime **D**evelopment **S**ystem. Engineered with AI Gemini great support.
 
 Preliminary project - under development.
